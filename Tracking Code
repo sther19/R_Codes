@@ -1,0 +1,52 @@
+#Directories where files are/will be saved
+K_directory<-"U:/SEM/Tools/Bid Optimisation/KENSHOO/Tracking/Kenshoo SNAPSHOT/Kenshoo Pixel Data"
+setwd(K_directory)
+fileNames <- list.files(pattern = "Kenshoo ALL Events file Daily.zip")
+start_date<-"2015-02-19"
+final_date<-"2015-05-28"
+days2run<-as.numeric(as.Date(final_date)-as.Date(start_date))
+file_index<-as.numeric(Sys.Date()-as.Date(start_date))
+fileNames2Run_i<-as.numeric(length(fileNames)-file_index)
+fileNames2Run_f<-as.numeric(fileNames2Run_i+days2run)
+fileNames_List<-fileNames[fileNames2Run_i:fileNames2Run_f]
+
+#Loop over days we want to run the program (daily (idate in 1:1)/ Monday as we must compute weekend  (idate in 1:3) 
+#to have in memory all kenshoo files
+
+for(file in 1:length(fileNames_List)){
+   #K_date<-Sys.Date()-idate+1
+      
+   #-----------------------------------------------------------------------------------------------------------
+   #KENSHOO FILES MANIPULATION
+   #-----------------------------------------------------------------------------------------------------------
+   #Reading Kenshoo File
+   #temp<-paste(K_date,"Kenshoo ALL Events file Daily.zip",sep="  ")
+   #K_file<-paste(K_date,"Kenshoo ALL Events file Daily.csv",sep="  ")
+   temp<-fileNames_List[file]
+   K_file<-gsub("zip","csv",fileNames_List[file])
+
+
+   K_data<-read.csv(unz(paste(K_directory,temp,sep="/"), K_file),sep=",")
+   colnames(K_data)<-c("Date","K_Profile_ID","K_Profile","K_ConversionType","K_Revenue","K_Currency",
+                        "BOOKING_ID","K_Country","K_referral1","K_referral2")
+   K_data$Date.Split<-str_split_fixed(K_data$Date," ", 2)
+   K_data$Date<-K_data$Date.Split[,1]
+   K_data$K_Hour<-K_data$Date.Split[,2]
+   K_data$K_Date.Split<-NULL
+   K_data$K_Date.Split<-K_data$K_Profile_ID<-K_data$K_Country<-K_data$K_referral1<-K_data$K_referral2<-K_data$K_Hour<-NULL
+   
+   if(file==1){
+      K_data_All<-K_data						
+   }else{
+      K_data_All<-rbind(K_data_All,K_data)
+   }
+}
+
+K_data_All$Date.Split<-K_data_All$K_Currency<-NULL
+K_data_All$K_Profile2<-tolower(K_data_All$K_Profile)
+K_data_All$edreams<-ifelse(grepl("edreams",K_data_All$K_Profile2)==TRUE,"edreams","NO")
+K_data_All$edreams<-ifelse(grepl("^e\\-",K_data_All$K_Profile2)==TRUE,"edreams",K_data_All$edreams)
+K_data_Edreams<-subset(K_data_All, (K_data_All$edreams=="edreams"))
+K_data_Edreams$edreams<-K_data_Edreams$K_Profile2<-NULL
+K_data_Edreams$BOOKING_ID<-gsub("[[:punct:]]+","",K_data_Edreams$BOOKING_ID)
+write.csv(K_data_Edreams,file=paste(K_directory,"edreams_KenshooRev_02182015_052720145_2.csv",sep="/"),row.names=FALSE) 
